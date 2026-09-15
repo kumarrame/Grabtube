@@ -437,3 +437,25 @@ body::after {
   .result-actions { flex-direction: column; }
   .page-content { padding: 28px 20px; }
 }
+
+/* Accessibility - Focus styles */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+.format-chip:focus-visible,
+.quality-opt:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Smooth transitions for interactive elements */
+a, button, input, textarea {
+  transition: all 0.2s ease;
+}
+
+/* Selection color */
+::selection {
+  background: var(--accent);
+  color: #fff;
+}

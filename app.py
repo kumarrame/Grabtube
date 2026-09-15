@@ -52,8 +52,12 @@ def format_views(count):
 def format_duration(seconds):
     if not seconds:
         return '0:00'
-    mins = int(seconds // 60)
-    secs = int(seconds % 60)
+    seconds = int(seconds)
+    hours = seconds // 3600
+    mins = (seconds % 3600) // 60
+    secs = seconds % 60
+    if hours > 0:
+        return f'{hours}:{mins:02d}:{secs:02d}'
     return f'{mins}:{secs:02d}'
 
 
@@ -108,15 +112,25 @@ def get_ytdlp_download_url(url, fmt, quality):
         else:
             height_match = re.search(r'(\d+)', quality)
             height = int(height_match.group(1)) if height_match else 720
-            ydl_opts['format'] = f'best[height<={height}]/best'
+            # Prefer muxed formats (video+audio together), fallback to best available
+            ydl_opts['format'] = f'best[height<={height}][ext=mp4]/best[height<={height}]/bestvideo[height<={height}]+bestaudio/best[height<={height}]/best'
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
+
         download_url = info.get('url', '')
         if not download_url:
+            # For muxed formats, requested_formats has both video and audio
             if 'requested_formats' in info:
+                # Return the video stream URL (audio is separate for high quality)
                 download_url = info['requested_formats'][0].get('url', '')
             elif 'formats' in info and info['formats']:
-                download_url = info['formats'][-1].get('url', '')
+                # Get the last format (usually best quality)
+                for f in reversed(info['formats']):
+                    if f.get('url'):
+                        download_url = f['url']
+                        break
+
         if download_url:
             print('[OK] yt-dlp download URL obtained')
         return download_url
@@ -132,6 +146,10 @@ def get_piped_info(video_id):
             resp = requests.get(url, timeout=15, headers=HEADERS)
             if resp.status_code == 200:
                 data = resp.json()
+                # Check for error in response
+                if data.get('error'):
+                    print(f'[WARN] Piped {instance}: {data["error"]}')
+                    continue
                 if data.get('title'):
                     print(f'[OK] Piped: {instance}')
                     return data
@@ -160,6 +178,8 @@ def get_oembed_info(video_id):
 def build_piped_formats(info):
     formats = []
     seen = set()
+
+    # Video streams
     for f in info.get('videoStreams', []):
         if f.get('audioOnly', False):
             continue
@@ -174,10 +194,12 @@ def build_piped_formats(info):
             'format_id': f.get('itag', ''),
             'ext': 'mp4',
             'quality': label,
-            'filesize': 'N/A',
+            'filesize': format_filesize(f.get('contentLength')),
             'has_audio': not vonly,
             'has_video': True,
         })
+
+    # Audio streams
     for f in info.get('audioStreams', []):
         bitrate = f.get('bitrate', 0)
         quality = f'{bitrate // 1000}kbps audio' if bitrate else 'audio'
@@ -189,10 +211,11 @@ def build_piped_formats(info):
             'format_id': f.get('itag', ''),
             'ext': 'mp4',
             'quality': quality,
-            'filesize': 'N/A',
+            'filesize': format_filesize(f.get('contentLength')),
             'has_audio': True,
             'has_video': False,
         })
+
     return formats
 
 
@@ -206,42 +229,67 @@ def build_ytdlp_formats(info):
         ext = f.get('ext', 'mp4')
         has_audio = f.get('acodec') != 'none'
         has_video = f.get('vcodec') != 'none'
+
+        # Skip format-only streams that have neither audio nor video
+        if not has_audio and not has_video:
+            continue
+
         key = f'{quality}_{ext}_{has_audio}_{has_video}'
         if key in seen:
             continue
         seen.add(key)
+
         filesize = f.get('filesize') or f.get('filesize_approx')
-        if filesize:
-            mb = filesize / (1024 * 1024)
-            filesize_str = f'{mb:.0f} MB'
-        else:
-            filesize_str = 'N/A'
         formats.append({
             'format_id': f.get('format_id', ''),
             'ext': ext,
             'quality': quality,
-            'filesize': filesize_str,
+            'filesize': format_filesize(filesize),
             'has_audio': has_audio,
             'has_video': has_video,
         })
+
     return formats
+
+
+def format_filesize(size_bytes):
+    """Format bytes to human readable size."""
+    if not size_bytes:
+        return 'N/A'
+    try:
+        size_bytes = int(size_bytes)
+    except (ValueError, TypeError):
+        return 'N/A'
+    if size_bytes <= 0:
+        return 'N/A'
+    mb = size_bytes / (1024 * 1024)
+    if mb >= 1024:
+        return f'{mb / 1024:.1f} GB'
+    if mb >= 1:
+        return f'{mb:.0f} MB'
+    kb = size_bytes / 1024
+    return f'{kb:.0f} KB'
 
 
 @app.route('/')
 def home():
     return render_template('index.html')
 
+
 @app.route('/about')
 def about():
     return render_template('about.html')
+
 
 @app.route('/privacy')
 def privacy():
     return render_template('privacy.html')
 
+
 @app.route('/terms')
 def terms():
     return render_template('terms.html')
+
 
 @app.route('/contact')
 def contact():
@@ -252,11 +300,15 @@ def contact():
 def api_info():
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid request body'}), 400
+
         url = data.get('url', '').strip()
         if not url:
             return jsonify({'success': False, 'error': 'URL is required'}), 400
         if not is_valid_youtube_url(url):
             return jsonify({'success': False, 'error': 'Invalid YouTube URL'}), 400
+
         video_id = extract_video_id(url)
         if not video_id:
             return jsonify({'success': False, 'error': 'Could not extract video ID'}), 400
@@ -299,7 +351,7 @@ def api_info():
                 }
             })
 
-        # Method 3: oEmbed
+        # Method 3: oEmbed (limited info, no formats)
         oembed = get_oembed_info(video_id)
         if oembed:
             return jsonify({
@@ -317,31 +369,38 @@ def api_info():
 
         return jsonify({
             'success': False,
-            'error': 'All servers busy. Please try again.'
-        }), 500
+            'error': 'All servers busy. Please try again later.'
+        }), 503
 
     except Exception as e:
         print(f'[ERROR] /api/info: {e}')
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
 
 @app.route('/api/download', methods=['POST'])
 def api_download():
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid request body'}), 400
+
         url = data.get('url', '').strip()
         fmt = data.get('format', 'mp4')
         quality = data.get('quality', '720p HD')
+
         if not url:
             return jsonify({'success': False, 'error': 'URL is required'}), 400
         if not is_valid_youtube_url(url):
             return jsonify({'success': False, 'error': 'Invalid YouTube URL'}), 400
+
         video_id = extract_video_id(url)
         if not video_id:
             return jsonify({'success': False, 'error': 'Could not extract video ID'}), 400
 
+        if fmt not in ('mp4', 'mp3'):
+            return jsonify({'success': False, 'error': 'Invalid format. Use mp4 or mp3'}), 400
+
         title = 'download'
-        download_url = ''
 
         # Method 1: yt-dlp
         download_url = get_ytdlp_download_url(url, fmt, quality)
@@ -359,7 +418,10 @@ def api_download():
         piped = get_piped_info(video_id)
         if piped:
             title = piped.get('title', 'download')
+            download_url = ''
+
             if fmt == 'mp3':
+                # Get highest bitrate audio
                 best = None
                 best_br = 0
                 for f in piped.get('audioStreams', []):
@@ -370,54 +432,109 @@ def api_download():
                 if best:
                     download_url = best.get('url', '')
             else:
+                # Match requested quality
                 height_match = re.search(r'(\d+)', quality)
                 target = int(height_match.group(1)) if height_match else 720
-                streams = piped.get('videoStreams', [])
-                for f in streams:
-                    h = re.search(r'(\d+)', f.get('quality', ''))
-                    if h and int(h.group(1)) == target:
-                        download_url = f.get('url', '')
-                        break
+
+                # Get video+audio combined streams first
+                combined = [f for f in piped.get('videoStreams', [])
+                           if not f.get('videoOnly', True)]
+                if combined:
+                    # Find best match
+                    for f in combined:
+                        h = re.search(r'(\d+)', f.get('quality', ''))
+                        if h and int(h.group(1)) <= target:
+                            download_url = f.get('url', '')
+                            break
+
+                # Fallback to video-only streams
                 if not download_url:
-                    best_lower = None
-                    best_h = 0
+                    streams = [f for f in piped.get('videoStreams', [])
+                              if not f.get('audioOnly', False)]
+                    # Try exact match
                     for f in streams:
                         h = re.search(r'(\d+)', f.get('quality', ''))
-                        if h:
-                            hv = int(h.group(1))
-                            if hv <= target and hv > best_h:
-                                best_h = hv
-                                best_lower = f
-                    if best_lower:
-                        download_url = best_lower.get('url', '')
-                if not download_url and streams:
-                    download_url = streams[-1].get('url', '')
+                        if h and int(h.group(1)) == target:
+                            download_url = f.get('url', '')
+                            break
+                    # Try closest lower
+                    if not download_url:
+                        best_lower = None
+                        best_h = 0
+                        for f in streams:
+                            h = re.search(r'(\d+)', f.get('quality', ''))
+                            if h:
+                                hv = int(h.group(1))
+                                if hv <= target and hv > best_h:
+                                    best_h = hv
+                                    best_lower = f
+                        if best_lower:
+                            download_url = best_lower.get('url', '')
+                    # Last resort: any stream
+                    if not download_url and streams:
+                        download_url = streams[-1].get('url', '')
 
-        if download_url:
-            return jsonify({
-                'success': True,
-                'data': {
-                    'downloadUrl': download_url,
-                    'title': title,
-                    'ext': 'mp3' if fmt == 'mp3' else 'mp4',
-                }
-            })
+            if download_url:
+                return jsonify({
+                    'success': True,
+                    'data': {
+                        'downloadUrl': download_url,
+                        'title': title,
+                        'ext': 'mp3' if fmt == 'mp3' else 'mp4',
+                    }
+                })
 
-        # Method 3: Fallback
-        fallback = f'https://www.y2mate.com/youtube/{video_id}'
+        # Method 3: Final fallback - construct a search-based redirect
         return jsonify({
-            'success': True,
-            'data': {
-                'downloadUrl': fallback,
-                'title': title,
-                'ext': 'mp3' if fmt == 'mp3' else 'mp4',
-                'fallback': True,
-            }
-        })
+            'success': False,
+            'error': 'Could not generate download link. The video may be restricted or servers are busy. Please try again.'
+        }), 503
 
     except Exception as e:
         print(f'[ERROR] /api/download: {e}')
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
+
+
+@app.route('/api/contact', methods=['POST'])
+def api_contact():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid request body'}), 400
+
+        name = data.get('name', '').strip()
+        email = data.get('email', '').strip()
+        message = data.get('message', '').strip()
+
+        if not name:
+            return jsonify({'success': False, 'error': 'Name is required'}), 400
+        if not email or '@' not in email:
+            return jsonify({'success': False, 'error': 'Valid email is required'}), 400
+        if not message:
+            return jsonify({'success': False, 'error': 'Message is required'}), 400
+
+        # In production, you'd send an email or save to database here
+        # For now, just log and return success
+        print(f'[CONTACT] Name: {name}, Email: {email}, Message: {message[:100]}...')
+
+        return jsonify({
+            'success': True,
+            'message': 'Thank you! Your message has been received.'
+        })
+
+    except Exception as e:
+        print(f'[ERROR] /api/contact: {e}')
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
+
+
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({'success': False, 'error': 'Not found'}), 404
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
 
 if __name__ == '__main__':

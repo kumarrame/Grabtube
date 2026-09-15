@@ -5,9 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GrabTube — Free YouTube Video & MP3 Downloader</title>
   <meta name="description" content="Download YouTube videos as MP4 and convert to MP3 for free. Fast, no signup.">
+  <meta name="keywords" content="youtube downloader, video downloader, mp3 converter, youtube to mp4, youtube to mp3">
+  <meta property="og:title" content="GrabTube — Free YouTube Video & MP3 Downloader">
+  <meta property="og:description" content="Download YouTube videos as MP4 and convert to MP3 for free.">
+  <meta property="og:type" content="website">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
@@ -24,10 +27,7 @@
     <h1 class="logo">Grab<span>Tube</span></h1>
     <p class="tagline">YouTube Video & MP3 Downloader</p>
   </header>
-  <div class="ad-container">
-    <ins class="adsbygoogle" style="display:inline-block;width:728px;height:90px" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="XXXXXXXXXX"></ins>
-    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-  </div>
+
   <div class="search-card">
     <div class="input-row">
       <input type="text" class="url-input" id="urlInput" placeholder="Paste YouTube link here..." spellcheck="false">
@@ -47,10 +47,12 @@
     <div class="error-msg" id="errorMsg"><span>&#9888;</span><span id="errorText"></span></div>
     <button class="download-btn" id="downloadBtn">&#11015; Get Download Link</button>
   </div>
+
   <div class="loading-overlay" id="loadingOverlay">
     <div class="spinner"></div>
     <p class="loading-text" id="loadingText">Fetching video info...</p>
   </div>
+
   <div class="result-card" id="resultCard">
     <div class="result-top">
       <div class="thumb-container">
@@ -70,10 +72,7 @@
       <button class="dl-link secondary" id="newSearchBtn">&#8634; New Search</button>
     </div>
   </div>
-  <div class="ad-container">
-    <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="XXXXXXXXXX" data-ad-format="auto" data-full-width-responsive="true"></ins>
-    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-  </div>
+
   <div class="features">
     <div class="feature-card">
       <span class="feature-icon">&#9889;</span>
@@ -91,6 +90,7 @@
       <p class="feature-desc">100% free, no registration required.</p>
     </div>
   </div>
+
   <div class="how-to">
     <h2>How It Works</h2>
     <div class="steps">
@@ -99,8 +99,10 @@
       <div class="step"><div class="step-num">3</div><h4 class="step-title">Download</h4><p class="step-desc">Click download and save to device.</p></div>
     </div>
   </div>
+
   <footer class="footer">
     <div class="footer-links">
+      <a href="/">Home</a>
       <a href="/about">About</a>
       <a href="/privacy">Privacy</a>
       <a href="/terms">Terms</a>
