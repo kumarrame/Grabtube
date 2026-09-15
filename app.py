@@ -386,50 +386,56 @@ def api_download():
         if not video_id:
             return jsonify({'success': False, 'error': 'Could not extract video ID'}), 400
 
-        video_url = f'https://www.youtube.com/watch?v={video_id}'
         download_url = ''
         title = 'download'
 
-        # Method 1: Cobalt API (most reliable for downloads)
-        audio_only = (fmt == 'mp3')
-        download_url = get_cobalt_download(video_url, audio_only=audio_only)
+        # Try Piped
+        piped = get_piped_info(video_id)
+        if piped:
+            title = piped.get('title', 'download')
 
-        # Method 2: Piped streams (fallback)
-        if not download_url:
-            piped = get_piped_info(video_id)
-            if piped:
-                title = piped.get('title', 'download')
-                if fmt == 'mp3':
-                    best = None
-                    best_br = 0
-                    for f in piped.get('audioStreams', []):
-                        br = f.get('bitrate', 0)
-                        if br > best_br:
-                            best_br = br
-                            best = f
-                    if best:
-                        download_url = best.get('url', '')
-                else:
-                    height_match = re.search(r'(\d+)', quality)
-                    target = int(height_match.group(1)) if height_match else 720
-                    for f in piped.get('videoStreams', []):
-                        if f.get('videoOnly', False):
-                            continue
+            if fmt == 'mp3':
+                # Best audio stream
+                best = None
+                best_br = 0
+                for f in piped.get('audioStreams', []):
+                    br = f.get('bitrate', 0)
+                    if br > best_br:
+                        best_br = br
+                        best = f
+                if best:
+                    download_url = best.get('url', '')
+            else:
+                # Find video matching quality
+                height_match = re.search(r'(\d+)', quality)
+                target = int(height_match.group(1)) if height_match else 720
+
+                # Any video stream (videoOnly OK too)
+                all_videos = piped.get('videoStreams', [])
+                for f in all_videos:
+                    h = re.search(r'(\d+)', f.get('quality', ''))
+                    if h and int(h.group(1)) == target:
+                        download_url = f.get('url', '')
+                        break
+
+                # Lower quality fallback
+                if not download_url:
+                    for f in all_videos:
                         h = re.search(r'(\d+)', f.get('quality', ''))
-                        if h and int(h.group(1)) == target:
+                        if h and int(h.group(1)) <= target:
                             download_url = f.get('url', '')
                             break
-                    if not download_url:
-                        for f in piped.get('videoStreams', []):
-                            if not f.get('videoOnly', False):
-                                download_url = f.get('url', '')
-                                break
 
-        # Method 3: Invidious streams (fallback)
+                # Any stream fallback
+                if not download_url and all_videos:
+                    download_url = all_videos[0].get('url', '')
+
+        # Try Invidious fallback
         if not download_url:
             invidious = get_invidious_info(video_id)
             if invidious:
                 title = invidious.get('title', 'download')
+
                 if fmt == 'mp3':
                     best = None
                     best_br = 0
@@ -442,13 +448,14 @@ def api_download():
                     if best:
                         download_url = best.get('url', '')
                 else:
-                    if invidious.get('formatStreams'):
-                        download_url = invidious['formatStreams'][-1].get('url', '')
+                    streams = invidious.get('formatStreams', [])
+                    if streams:
+                        download_url = streams[-1].get('url', '')
 
         if not download_url:
             return jsonify({
                 'success': False,
-                'error': 'Could not generate download link. Try different quality.'
+                'error': 'Could not get download link. Try again later.'
             }), 500
 
         return jsonify({
