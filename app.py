@@ -1,5 +1,6 @@
 import os
 import re
+import traceback
 import yt_dlp
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
@@ -14,6 +15,11 @@ CORS(app)
 YOUTUBE_REGEX = re.compile(
     r'^(https?://)?(www\.)?(youtube\.com/(watch\?v=|shorts/)|youtu\.be/)[\w\-]{11}'
 )
+
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept-Language': 'en-US,en;q=0.9',
+}
 
 def is_valid_youtube_url(url):
     return bool(YOUTUBE_REGEX.match(url.strip()))
@@ -48,6 +54,7 @@ def format_filesize(size_bytes):
         return f'{mb / 1024:.1f} GB'
     return f'{mb:.0f} MB'
 
+
 @app.route('/')
 def home():
     return render_template('index.html')
@@ -68,11 +75,13 @@ def terms():
 def contact():
     return render_template('contact.html')
 
+
 @app.route('/api/info', methods=['POST'])
 def api_info():
     try:
         data = request.get_json()
         url = data.get('url', '').strip()
+
         if not url:
             return jsonify({'success': False, 'error': 'URL is required'}), 400
         if not is_valid_youtube_url(url):
@@ -81,9 +90,12 @@ def api_info():
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
-            'no_call_home': True,
             'no_check_certificate': True,
             'skip_download': True,
+            'no_color': True,
+            'geo_bypass': True,
+            'http_headers': HEADERS,
+            'socket_timeout': 30,
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -126,10 +138,12 @@ def api_info():
 
     except Exception as e:
         print(f'[ERROR] /api/info: {e}')
+        traceback.print_exc()
         return jsonify({
             'success': False,
-            'error': 'Could not fetch video info. Check URL and try again.'
+            'error': f'Could not fetch video info: {str(e)}'
         }), 500
+
 
 @app.route('/api/download', methods=['POST'])
 def api_download():
@@ -147,32 +161,28 @@ def api_download():
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
-            'no_call_home': True,
             'no_check_certificate': True,
+            'geo_bypass': True,
+            'http_headers': HEADERS,
+            'socket_timeout': 30,
         }
 
         if fmt == 'mp3':
             ydl_opts['format'] = 'bestaudio/best'
-            ydl_opts['postprocessors'] = [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': quality.replace(' kbps', ''),
-            }]
         else:
             height_match = re.search(r'(\d+)', quality)
             height = int(height_match.group(1)) if height_match else 720
             ydl_opts['format'] = (
-                f'bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]'
-                f'/bestvideo[height<={height}]+bestaudio'
+                f'bestvideo[height<={height}]+bestaudio'
                 f'/best[height<={height}]'
                 f'/best'
             )
-            ydl_opts['merge_output_format'] = 'mp4'
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
 
         download_url = info.get('url', '')
+
         if not download_url:
             if 'requested_formats' in info:
                 download_url = info['requested_formats'][0].get('url', '')
@@ -196,10 +206,12 @@ def api_download():
 
     except Exception as e:
         print(f'[ERROR] /api/download: {e}')
+        traceback.print_exc()
         return jsonify({
             'success': False,
-            'error': 'Could not generate download. Try again.'
+            'error': f'Could not generate download: {str(e)}'
         }), 500
+
 
 if __name__ == '__main__':
     print('\n  GrabTube Server Starting...')
