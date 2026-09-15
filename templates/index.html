@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GrabTube — Free YouTube Video & MP3 Downloader</title>
+  <meta name="description" content="Download YouTube videos as MP4 and convert to MP3 for free. Fast, no signup.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<nav class="navbar">
+  <a href="/" class="nav-logo">Grab<span>Tube</span></a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/about">About</a>
+    <a href="/contact">Contact</a>
+  </div>
+</nav>
+<div class="wrapper">
+  <header class="header">
+    <h1 class="logo">Grab<span>Tube</span></h1>
+    <p class="tagline">YouTube Video & MP3 Downloader</p>
+  </header>
+  <div class="ad-container">
+    <ins class="adsbygoogle" style="display:inline-block;width:728px;height:90px" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="XXXXXXXXXX"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+  </div>
+  <div class="search-card">
+    <div class="input-row">
+      <input type="text" class="url-input" id="urlInput" placeholder="Paste YouTube link here..." spellcheck="false">
+      <button class="paste-btn" id="pasteBtn">&#128203; Paste</button>
+    </div>
+    <div class="format-section">
+      <span class="format-label">Choose format</span>
+      <div class="format-options">
+        <div class="format-chip active" data-format="mp4"><span class="icon">&#9654;</span><span>MP4 Video</span></div>
+        <div class="format-chip" data-format="mp3"><span class="icon">&#9835;</span><span>MP3 Audio</span></div>
+      </div>
+    </div>
+    <div class="quality-section visible" id="qualitySection">
+      <span class="format-label">Select quality</span>
+      <div class="quality-grid" id="qualityGrid"></div>
+    </div>
+    <div class="error-msg" id="errorMsg"><span>&#9888;</span><span id="errorText"></span></div>
+    <button class="download-btn" id="downloadBtn">&#11015; Get Download Link</button>
+  </div>
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <p class="loading-text" id="loadingText">Fetching video info...</p>
+  </div>
+  <div class="result-card" id="resultCard">
+    <div class="result-top">
+      <div class="thumb-container">
+        <img id="resultThumb" src="" alt="Thumbnail">
+        <span class="thumb-duration" id="resultDuration">0:00</span>
+      </div>
+      <div class="result-info">
+        <h3 class="result-title" id="resultTitle"></h3>
+        <div class="result-meta">
+          <span>&#128100; <span id="resultChannel"></span></span>
+          <span>&#128065; <span id="resultViews"></span></span>
+        </div>
+      </div>
+    </div>
+    <div class="result-actions">
+      <a href="#" class="dl-link primary" id="downloadLink" target="_blank" rel="noopener">&#11015; Download Now</a>
+      <button class="dl-link secondary" id="newSearchBtn">&#8634; New Search</button>
+    </div>
+  </div>
+  <div class="ad-container">
+    <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="XXXXXXXXXX" data-ad-format="auto" data-full-width-responsive="true"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+  </div>
+  <div class="features">
+    <div class="feature-card">
+      <span class="feature-icon">&#9889;</span>
+      <h4 class="feature-title">Lightning Fast</h4>
+      <p class="feature-desc">Optimized servers for instant downloads.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">&#127911;</span>
+      <h4 class="feature-title">MP3 Extraction</h4>
+      <p class="feature-desc">Convert YouTube to high-quality MP3.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">&#128274;</span>
+      <h4 class="feature-title">No Signup</h4>
+      <p class="feature-desc">100% free, no registration required.</p>
+    </div>
+  </div>
+  <div class="how-to">
+    <h2>How It Works</h2>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><h4 class="step-title">Paste Link</h4><p class="step-desc">Copy any YouTube URL and paste above.</p></div>
+      <div class="step"><div class="step-num">2</div><h4 class="step-title">Pick Format</h4><p class="step-desc">Choose MP4 video or MP3 audio.</p></div>
+      <div class="step"><div class="step-num">3</div><h4 class="step-title">Download</h4><p class="step-desc">Click download and save to device.</p></div>
+    </div>
+  </div>
+  <footer class="footer">
+    <div class="footer-links">
+      <a href="/about">About</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+      <a href="/contact">Contact</a>
+    </div>
+    <p>&copy; 2025 GrabTube. For personal use only.</p>
+  </footer>
+</div>
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

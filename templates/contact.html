@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact — GrabTube</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<nav class="navbar">
+  <a href="/" class="nav-logo">Grab<span>Tube</span></a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/about">About</a>
+    <a href="/contact">Contact</a>
+  </div>
+</nav>
+<div class="wrapper">
+  <div class="page-content">
+    <h1>Contact Us</h1>
+    <p>Have questions, feedback, or DMCA requests? Reach out to us.</p>
+    <div class="contact-form">
+      <div class="form-group">
+        <label for="contactName">Name</label>
+        <input type="text" id="contactName" placeholder="Your name">
+      </div>
+      <div class="form-group">
+        <label for="contactEmail">Email</label>
+        <input type="email" id="contactEmail" placeholder="your@email.com">
+      </div>
+      <div class="form-group">
+        <label for="contactMsg">Message</label>
+        <textarea id="contactMsg" rows="5" placeholder="Your message..."></textarea>
+      </div>
+      <button class="download-btn" style="max-width:200px;">Send Message</button>
+    </div>
+  </div>
+  <footer class="footer">
+    <div class="footer-links">
+      <a href="/">Home</a>
+      <a href="/about">About</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+    </div>
+    <p>&copy; 2025 GrabTube. All rights reserved.</p>
+  </footer>
+</div>
+</body>
+</html>
